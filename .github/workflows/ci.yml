@@ -29,6 +29,8 @@ jobs:
   launcher:
     name: Launcher build and unit tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -49,3 +51,10 @@ jobs:
           size=$(stat -c %s launcher/app/build/outputs/apk/release/app-release.apk)
           echo "release APK: $((size / 1024)) KB"
           test "$size" -lt 409600 || { echo "APK is over 400 KB; the launcher targets 1 GB TVs, keep it small"; exit 1; }
+      - name: Publish APK
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp launcher/app/build/outputs/apk/release/app-release.apk glass-tv.apk
+          gh release create "build-${{ github.run_number }}" glass-tv.apk --title "Build ${{ github.run_number }}" --notes "Launcher APK" --repo "${{ github.repository }}"
